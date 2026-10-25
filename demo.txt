@@ -1,0 +1,7 @@
+1. explain basic flow
+2. explain nodes,add-edge and add Conditions:
+3. start building
+4 pause for logging overrride
+5. explain Conditions:
+   
+   

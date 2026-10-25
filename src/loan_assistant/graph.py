@@ -1,5 +1,14 @@
+import os
+
+from langchain_aws import ChatBedrockConverse
 from langgraph.graph import StateGraph, START, END
+
 from .state import (LoanState)    
+
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-micro-v1:0")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+llm = ChatBedrockConverse(model_id=MODEL_ID, temperature=0, region_name=AWS_REGION)
+
 
 def document_agent(state: LoanState) -> dict:
     return {
@@ -21,7 +30,7 @@ def policy_agent(state: LoanState) -> dict:
     passed = monthly_repayment < disposable / 2
 
     if passed:
-        reasons = ["Disposable income is less than half of the disposable income"]
+        reasons = ["repayment is under half of disposable income"]    
     else:    
         reasons = ["repayment is too high compared to disposable income"]
 
@@ -41,9 +50,19 @@ def route_after_policy(state: LoanState) -> str:
         return "rejection"
     
 def supervisor_agent(state: LoanState) -> dict:
+    prompt = f"""
+You are a loan underwriting assistant at a UK bank.
+Write a 2-3 sentence recommendation for a human loan officer.
+You recommend only; a human makes the final decision.
+Loan amount: £{state["loan_amount"]}
+Affordability: {state["affordability"]}
+Policy check: {state["policy_check"]}"""
+    
+    response = llm.invoke(prompt)
+
     return {
-        "recommendation": "Approve: affordability and policy checks passed.",
-        "audit_log": ["supervisor agent ran"],
+        "recommendation": response.content,
+        "audit_log": [f"supervisor agent ran (LLM: {MODEL_ID})"],
     }
 
 def rejection(state: LoanState) -> dict:
@@ -52,6 +71,7 @@ def rejection(state: LoanState) -> dict:
         "recommendation": "Decline: " + "; ".join(reasons),
         "audit_log": ["rejection ran"],
     }
+
 builder = StateGraph(LoanState)
 builder.add_node("document_agent", document_agent)
 builder.add_node("affordability_agent", affordability_agent)
@@ -65,6 +85,7 @@ builder.add_conditional_edges("policy_agent", route_after_policy)
 builder.add_edge("rejection", END)
 builder.add_edge("supervisor_agent", END)
 graph = builder.compile()
+
 
 if __name__ == "__main__":
     result = graph.invoke({"application_id": "A1", "loan_amount": 10000})
