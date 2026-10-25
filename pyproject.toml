@@ -1,0 +1,21 @@
+[project]
+name = "loan-assistant"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "techwithalok", email = "learntechwithalok@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.43.118",
+    "langchain-aws>=1.9.0",
+    "langgraph>=1.2.17",
+]
+
+[project.scripts]
+loan-assistant = "loan_assistant:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
